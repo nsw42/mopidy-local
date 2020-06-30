@@ -2,6 +2,8 @@ import logging
 import pathlib
 import time
 
+import mutagen.mp3
+
 from mopidy import commands, exceptions
 from mopidy.audio import scan, tags
 
@@ -216,7 +218,11 @@ class ScanCommand(commands.Command):
         for absolute_path in files:
             try:
                 file_uri = absolute_path.as_uri()
-                result = scanner.scan(file_uri)
+
+                if absolute_path.suffix == '.mp3':
+                    result = self._scan_mp3(absolute_path)
+                else:
+                    result = scanner.scan(file_uri)
 
                 if not result.playable:
                     logger.warning(
@@ -233,6 +239,7 @@ class ScanCommand(commands.Command):
                         f"Track shorter than {MIN_DURATION_MS}ms"
                     )
                 else:
+                    logger.info(f"File: {absolute_path} -> tags {result.tags}")
                     local_uri = translator.path_to_local_track_uri(
                         absolute_path, media_dir
                     )
@@ -252,6 +259,17 @@ class ScanCommand(commands.Command):
 
         progress.log()
         logger.info("Done scanning")
+
+    def _scan_mp3(self, absolute_path):
+        mp3 = mutagen.mp3.MP3(absolute_path)
+        tags = mp3.tags  # TODO: Need to rewrite tags
+        result = scan._Result(uri=absolute_path.as_uri(),
+                              tags=tags,
+                              duration=int(1000 * mp3.info.length),
+                              seekable=False,
+                              mime=mp3.mime,  # TODO: Is this a type match for mutagen.audio.scan?
+                              playable=not mp3.info.sketchy)
+        return result
 
 
 class _ScanProgress:
