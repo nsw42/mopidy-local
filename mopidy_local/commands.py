@@ -92,6 +92,8 @@ class ScanCommand(commands.Command):
             )
         )
 
+        logger.info(f"Found {len(files_to_update)} tracks which need to be updated")
+
         self._scan_metadata(
             media_dir=media_dir,
             file_mtimes=file_mtimes,
@@ -199,7 +201,6 @@ class ScanCommand(commands.Command):
             ):
                 files_to_update.add(absolute_path)
 
-        logger.info(f"Found {len(files_to_update)} tracks which need to be updated")
         return files_to_update
 
     def _scan_metadata(
