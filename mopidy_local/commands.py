@@ -2,12 +2,10 @@ import logging
 import pathlib
 import time
 
-import mutagen.mp3
-
 from mopidy import commands, exceptions
 from mopidy.audio import scan, tags
 
-from mopidy_local import mtimes, storage, translator
+from mopidy_local import mtimes, scan_mp3, storage, translator
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +59,14 @@ class ScanCommand(commands.Command):
             default=False,
             help="Force rescan of all media files",
         )
+        self.add_argument(
+            "--force-selected",
+            action="append",
+            dest="force_selected",
+            metavar="PATH",
+            default=[],
+            help="Force rescan of individual files or directories",
+        )
 
     def run(self, args, config):
         media_dir = pathlib.Path(config["local"]["media_dir"]).resolve()
@@ -76,6 +82,7 @@ class ScanCommand(commands.Command):
             file_mtimes=file_mtimes,
             library=library,
             force_rescan=args.force,
+            force_selected=[pathlib.Path(path).resolve().as_posix() for path in args.force_selected],
         )
 
         files_to_update.update(
@@ -125,7 +132,7 @@ class ScanCommand(commands.Command):
         return file_mtimes
 
     def _check_tracks_in_library(
-        self, *, media_dir, file_mtimes, library, force_rescan
+        self, *, media_dir, file_mtimes, library, force_rescan, force_selected
     ):
         num_tracks = library.load()
         logger.info(f"Checking {num_tracks} tracks from library")
@@ -140,7 +147,9 @@ class ScanCommand(commands.Command):
             if mtime is None:
                 logger.debug(f"Removing {track.uri}: File not found")
                 uris_to_remove.add(track.uri)
-            elif mtime > track.last_modified or force_rescan:
+            elif mtime > track.last_modified \
+                    or force_rescan \
+                    or any(absolute_path.as_posix().startswith(path) for path in force_selected):
                 files_to_update.add(absolute_path)
             files_in_library.add(absolute_path)
 
@@ -220,7 +229,7 @@ class ScanCommand(commands.Command):
                 file_uri = absolute_path.as_uri()
 
                 if absolute_path.suffix == '.mp3':
-                    result = self._scan_mp3(absolute_path)
+                    result = scan_mp3.scan_mp3(absolute_path)
                 else:
                     result = scanner.scan(file_uri)
 
@@ -239,7 +248,6 @@ class ScanCommand(commands.Command):
                         f"Track shorter than {MIN_DURATION_MS}ms"
                     )
                 else:
-                    logger.info(f"File: {absolute_path} -> tags {result.tags}")
                     local_uri = translator.path_to_local_track_uri(
                         absolute_path, media_dir
                     )
@@ -259,17 +267,6 @@ class ScanCommand(commands.Command):
 
         progress.log()
         logger.info("Done scanning")
-
-    def _scan_mp3(self, absolute_path):
-        mp3 = mutagen.mp3.MP3(absolute_path)
-        tags = mp3.tags  # TODO: Need to rewrite tags
-        result = scan._Result(uri=absolute_path.as_uri(),
-                              tags=tags,
-                              duration=int(1000 * mp3.info.length),
-                              seekable=False,
-                              mime=mp3.mime,  # TODO: Is this a type match for mutagen.audio.scan?
-                              playable=not mp3.info.sketchy)
-        return result
 
 
 class _ScanProgress:
