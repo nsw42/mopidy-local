@@ -94,7 +94,7 @@ if __name__ == '__main__':
         print(filename)
         print('  tags:')
         for k, v in sorted(result.tags.items()):
-            v=str(v)
+            v = str(v)
             if len(v) > 40:
                 v = v[:40] + '...'
             print(f'    {k}={v}')

@@ -51,10 +51,10 @@ def get_image_size_jpeg(data):
             index += 1
             ftype = data[index]
         index += 1
-        size = struct.unpack(">H", data[index : index + 2])[0] - 2
+        size = struct.unpack(">H", data[index:index + 2])[0] - 2
         index += 2
     index += 1  # skip precision byte
-    height, width = struct.unpack(">HH", data[index : index + 4])
+    height, width = struct.unpack(">HH", data[index:index + 4])
     return width, height
 
 
