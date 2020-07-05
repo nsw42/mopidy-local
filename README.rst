@@ -10,7 +10,9 @@ This is a fork of `mopidy-local`_ for the `PiJu`_ project.
 
 The following changes have been made specific for PiJu, which might be too specialised to prevent them from being pushed upstream:
 
-- Use mutagen to extract mp3 tags, so that the album release year can be honoured
+- Use mutagen to extract mp3 tags, so that the album release year can be honoured.
+  This fixes the album duplication problem for compilations, without requiring all
+  recording date/year information be stripped from the MP3s.
 
 
 Also, the following bug fixes and improvements, which need to be pushed upstream:
